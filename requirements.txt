@@ -268,7 +268,7 @@ smart_open==7.4.0
 smmap==5.0.2
 sniffio==1.3.1
 soupsieve==2.8.3
-spacy==3.8.7
+spacy==3.7.5
 spacy-legacy==3.0.12
 spacy-loggers==1.0.5
 SQLAlchemy==2.0.44
@@ -286,7 +286,7 @@ termcolor==3.2.0
 terminado==0.18.1
 text-unidecode==1.3
 tf_keras==2.20.1
-thinc==8.3.6
+thinc==8.2.5
 threadpoolctl==3.6.0
 tinycss2==1.4.0
 tokenizers==0.22.1
