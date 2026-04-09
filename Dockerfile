@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Python dependencies
 COPY requirements.txt .
 ARG GITHUB_TOKEN
-RUN git config --global url."https://${GITHUB_TOKEN}:@github.com/".insteadOf "https://github.com/"
+RUN git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 RUN pip install --no-cache-dir -r requirements.txt
 RUN git config --global --unset url."https://${GITHUB_TOKEN}:@github.com/".insteadOf
 RUN pip install --no-cache-dir gunicorn uvicorn
