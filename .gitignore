@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+assessment_recruiter.db
+uploads/*
+!uploads/.gitkeep

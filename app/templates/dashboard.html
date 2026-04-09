@@ -1,0 +1,564 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex h-screen bg-slate-50 overflow-hidden w-full">
+    <!-- Sidebar -->
+    <aside class="w-80 bg-slate-50 border-r border-slate-200 overflow-y-auto flex-shrink-0 p-6 flex flex-col gap-6 hidden md:flex">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-lg shadow-sm">
+                SA
+            </div>
+            <div>
+                <strong class="block text-slate-900 leading-tight">SeekATS</strong>
+                <span class="block text-sm text-slate-500">Assessment Recruiter</span>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">Admin Workspace</span>
+            <h2 class="text-lg font-semibold text-slate-900 mb-2">{{ user.display_name }}</h2>
+            <p class="text-sm text-slate-500 mb-4">Build a complete job post, attach photos, and generate a clean assessment request payload.</p>
+            <form action="/auth/logout" method="post">
+                <button class="w-full py-2 px-4 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors" type="submit">Logout</button>
+            </form>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 block">Assessment Totals</span>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+                    <span class="text-slate-600">Total Questions</span>
+                    <strong id="questionTotal" class="text-slate-900">22</strong>
+                </div>
+                <div class="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+                    <span class="text-slate-600">Est. Minutes</span>
+                    <strong id="timeTotal" class="text-slate-900">82.5</strong>
+                </div>
+                <div class="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+                    <span class="text-slate-600">Weightage</span>
+                    <strong id="weightTotal" class="text-slate-900">100%</strong>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-600">Status</span>
+                    <span id="statusBadge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">Draft</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex-1">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 block">Recent Jobs</span>
+            <div class="space-y-3">
+                {% if recent_jobs %}
+                    {% for item in recent_jobs %}
+                    <article class="p-3 rounded-lg bg-slate-50 border border-slate-100 text-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <strong class="text-slate-900 truncate pr-2">{{ item.job_title }}</strong>
+                            <span class="text-slate-500 text-xs shrink-0">{{ item.created_at }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-600 truncate pr-2">{{ item.company_name }}</span>
+                            <span class="text-slate-400 text-xs font-mono shrink-0">{{ item.job_number }}</span>
+                        </div>
+                    </article>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-sm text-slate-500 italic">No jobs saved yet. Your first submission will appear here.</p>
+                {% endif %}
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto bg-white p-6 md:p-10 lg:p-12">
+        <div class="max-w-5xl mx-auto space-y-8">
+            <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-slate-100">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 block">Recruiter Admin</span>
+                    <h1 class="text-3xl font-semibold text-slate-900 tracking-tight mb-2">Create Job + Assessment Blueprint</h1>
+                    <p class="text-slate-500 max-w-2xl">Structured intake for recruiters, with photo uploads and an API-ready JSON response for assessment generation.</p>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700">FastAPI Backend</span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700">Admin Login</span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700">Photo Upload</span>
+                </div>
+            </header>
+
+            <form id="jobForm" class="space-y-8">
+                <input type="hidden" id="statusInput" value="draft">
+
+                <!-- 01 Employer Details -->
+                <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">01</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Employer Details</h2>
+                        </div>
+                        <p class="text-sm text-slate-500">Set the employer profile and attach company visuals.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Type of Company</label>
+                            <select id="companyType" required class="block w-full rounded-md border-slate-300 py-2 pl-3 pr-10 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Company Name</label>
+                            <select id="companyName" required class="block w-full rounded-md border-slate-300 py-2 pl-3 pr-10 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="flex items-center pt-6">
+                            <input id="publishJob" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900">
+                            <label for="publishJob" class="ml-2 block text-sm text-slate-700">Publish this job</label>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Expiry Date</label>
+                            <input type="date" id="expiryDate" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Company Logo</label>
+                            <input type="file" id="companyLogo" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100 py-1.5 border border-slate-300 rounded-md px-2">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Job Photos</label>
+                        <input type="file" id="jobPhotos" accept="image/*" multiple class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100 py-1.5 border border-slate-300 rounded-md px-2 mb-1">
+                        <p class="text-xs text-slate-500">Upload office, workplace, or brand visuals to enrich the job post.</p>
+                    </div>
+                </section>
+
+                <!-- 02 Job Details -->
+                <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">02</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Job Details</h2>
+                        </div>
+                        <p class="text-sm text-slate-500">Capture the exact hiring context recruiters want the assessment engine to understand.</p>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Job Title</label>
+                        <input type="text" id="jobTitle" placeholder="Enter job title" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Job Type</label>
+                            <select id="jobType" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Job Type Location</label>
+                            <select id="jobLocationType" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Industry</label>
+                            <select id="industry" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Sub Industry</label>
+                            <select id="subIndustry" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Functional Area</label>
+                            <select id="functionalArea" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Designation</label>
+                            <select id="designation" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Roles and Responsibilities</label>
+                            <div class="border border-slate-300 rounded-md overflow-hidden" data-editor-root>
+                                <div class="bg-slate-50 border-b border-slate-300 p-2 flex gap-1 flex-wrap">
+                                    <button type="button" data-command="bold" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700 font-bold">B</button>
+                                    <button type="button" data-command="italic" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700 italic">I</button>
+                                    <button type="button" data-command="underline" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700 underline">U</button>
+                                    <button type="button" data-command="insertUnorderedList" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700">List</button>
+                                    <button type="button" data-command="insertOrderedList" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700">Steps</button>
+                                </div>
+                                <div class="min-h-[150px] p-3 focus:outline-none prose prose-sm prose-slate max-w-none empty:before:content-['Write_here...'] empty:before:text-slate-400 cursor-text" contenteditable="true" data-target="rolesResponsibilities"></div>
+                                <textarea id="rolesResponsibilities" class="hidden"></textarea>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Desired Candidate Profile</label>
+                            <div class="border border-slate-300 rounded-md overflow-hidden" data-editor-root>
+                                <div class="bg-slate-50 border-b border-slate-300 p-2 flex gap-1 flex-wrap">
+                                    <button type="button" data-command="bold" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700 font-bold">B</button>
+                                    <button type="button" data-command="italic" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700 italic">I</button>
+                                    <button type="button" data-command="underline" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700 underline">U</button>
+                                    <button type="button" data-command="insertUnorderedList" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700">List</button>
+                                    <button type="button" data-command="insertOrderedList" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700">Steps</button>
+                                </div>
+                                <div class="min-h-[150px] p-3 focus:outline-none prose prose-sm prose-slate max-w-none empty:before:content-['Write_here...'] empty:before:text-slate-400 cursor-text" contenteditable="true" data-target="desiredCandidateProfile"></div>
+                                <textarea id="desiredCandidateProfile" class="hidden"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Keywords</label>
+                            <input type="text" id="keywords" placeholder="Python, recruitment, screening, cloud" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Number of Vacancies</label>
+                            <input type="number" id="vacancies" min="1" value="1" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Country</label>
+                            <select id="jobCountry" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">State</label>
+                            <select id="jobState" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">City</label>
+                            <select id="jobCity" required class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 03 Salary Details -->
+                <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">03</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Salary Details</h2>
+                        </div>
+                        <p class="text-sm text-slate-500">Add the salary range and any recruiter notes around compensation.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                            <select id="currency" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Minimum Salary</label>
+                            <input type="number" id="minimumSalary" min="0" placeholder="Minimum" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Maximum Salary</label>
+                            <input type="number" id="maximumSalary" min="0" placeholder="Maximum" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="flex items-center pt-6">
+                            <input id="hideSalary" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900">
+                            <label for="hideSalary" class="ml-2 block text-sm text-slate-700">Hide salary from job seekers</label>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Other Benefits</label>
+                            <input type="text" id="otherBenefits" placeholder="Health cover, bonus, relocation..." class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 04 Desired Candidate Profile -->
+                <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">04</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Desired Candidate Profile</h2>
+                        </div>
+                        <p class="text-sm text-slate-500">Shape the ideal target candidate for screening.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Gender</label>
+                            <select id="gender" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                                <option value="">No preference</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="No Preference">No Preference</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Min Age</label>
+                            <input type="number" id="minAge" min="18" placeholder="18" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Max Age</label>
+                            <input type="number" id="maxAge" min="18" placeholder="65" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Nationality</label>
+                            <select id="nationality" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Languages Known</label>
+                            <select id="languagesKnown" multiple class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border min-h-[100px]"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Preferred Countries</label>
+                            <select id="preferredCountries" multiple class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border min-h-[100px]"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Preferred States</label>
+                            <select id="preferredStates" multiple class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border min-h-[100px]"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Preferred Cities</label>
+                            <select id="preferredCities" multiple class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border min-h-[100px]"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Driving License</label>
+                            <select id="drivingLicense" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                                <option value="">Optional</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Availability</label>
+                            <select id="availability" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Visa Status</label>
+                            <select id="visaStatus" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 05 Experience Requirement -->
+                <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">05</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Experience Requirement</h2>
+                        </div>
+                        <p class="text-sm text-slate-500">Set the expected years of experience.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Industry</label>
+                            <select id="experienceIndustry" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Sub Industry</label>
+                            <select id="experienceSubIndustry" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Min Work Exp (Years)</label>
+                            <input type="number" id="minExperience" min="0" step="0.5" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Max Work Exp (Years)</label>
+                            <input type="number" id="maxExperience" min="0" step="0.5" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Min GCC Exp (Years)</label>
+                            <input type="number" id="minGccExperience" min="0" step="0.5" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Max GCC Exp (Years)</label>
+                            <input type="number" id="maxGccExperience" min="0" step="0.5" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 06 Education -->
+                <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">06</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Education Requirement</h2>
+                        </div>
+                        <button type="button" id="addEducationBtn" class="inline-flex items-center px-3 py-1.5 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500">
+                            + Add Education
+                        </button>
+                    </div>
+                    <div id="educationContainer" class="space-y-4"></div>
+                </section>
+
+                <!-- 07 Skills -->
+                <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">07</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Skills Requirement</h2>
+                        </div>
+                        <p class="text-sm text-slate-500">Highlight skill dimensions for assessment.</p>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Functional Skills</label>
+                            <select id="functionalSkills" multiple class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border min-h-[120px]"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Professional Skills</label>
+                            <select id="professionalSkills" multiple class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border min-h-[120px]"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">IT Skills</label>
+                            <select id="itSkills" multiple class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border min-h-[120px]"></select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 08 Custom Questions -->
+                <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex items-center justify-between gap-4 mb-4 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">08</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Custom Questions for Candidates</h2>
+                        </div>
+                        <button type="button" id="addQuestionBtn" class="inline-flex items-center px-3 py-1.5 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500">
+                            + Add Question
+                        </button>
+                    </div>
+                    <p class="text-sm text-slate-500 mb-6">You can ask up to 6 custom questions.</p>
+                    <div id="customQuestionContainer" class="space-y-4"></div>
+                </section>
+
+                <!-- 09 Instructions -->
+                <section class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">09</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Instructions to Recruiters</h2>
+                        </div>
+                        <p class="text-sm text-slate-500">Confidential notes that stay within the admin workflow.</p>
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="border border-slate-300 rounded-md overflow-hidden" data-editor-root>
+                            <div class="bg-slate-50 border-b border-slate-300 p-2 flex gap-1 flex-wrap">
+                                <button type="button" data-command="bold" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700 font-bold">B</button>
+                                <button type="button" data-command="italic" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700 italic">I</button>
+                                <button type="button" data-command="underline" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700 underline">U</button>
+                                <button type="button" data-command="insertUnorderedList" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700">List</button>
+                                <button type="button" data-command="insertOrderedList" class="px-2 py-1 text-sm bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-700">Steps</button>
+                            </div>
+                            <div class="min-h-[150px] p-3 focus:outline-none prose prose-sm prose-slate max-w-none empty:before:content-['Write_here...'] empty:before:text-slate-400 cursor-text" contenteditable="true" data-target="recruiterInstructions"></div>
+                            <textarea id="recruiterInstructions" class="hidden"></textarea>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Mode of Application</label>
+                        <select id="applicationMode" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                    </div>
+                </section>
+
+                <!-- 10 Assessment Blueprint -->
+                <section class="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-900 text-white font-bold text-sm">10</span>
+                            <h2 class="text-xl font-semibold text-slate-900">Assessment Blueprint</h2>
+                        </div>
+                        <p class="text-sm text-slate-500">Configure the API generation context.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Assessment Name</label>
+                            <input type="text" id="assessmentName" placeholder="Create Assessment" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border bg-white">
+                        </div>
+                        <div id="generatedRefs" class="bg-white border border-slate-200 rounded-lg p-3 text-sm flex flex-col justify-center">
+                            <span class="text-slate-500 text-xs uppercase font-bold mb-1">Generated when saved</span>
+                            <div class="flex gap-4">
+                                <strong class="text-slate-700">Job No: pending</strong>
+                                <strong class="text-slate-700">Assessment No: pending</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3">Pre-Assessment Screening</h3>
+                            <div id="screeningFields" class="flex flex-wrap gap-2 chip-container"></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3">AI Generation Context</h3>
+                            <div id="knowledgeSources" class="flex flex-wrap gap-2 chip-container"></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3">Assessment Goal</h3>
+                            <div id="assessmentGoals" class="flex flex-wrap gap-2 chip-container"></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3">Competencies to Measure</h3>
+                            <div id="competencies" class="flex flex-wrap gap-2 chip-container"></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3">Format & Rules</h3>
+                            <div id="deliveryRules" class="flex flex-wrap gap-2 chip-container"></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3">Calibration</h3>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Difficulty</label>
+                            <select id="difficulty" class="block w-full rounded-md border-slate-300 py-2 px-3 text-base focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 sm:text-sm border"></select>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                            <h3 class="text-lg font-bold text-slate-900">Question Plan</h3>
+                            <p class="text-sm text-slate-500">Counts and times are auto-summed.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-200">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                                        <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Count</th>
+                                        <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Mins / Q</th>
+                                        <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Weight %</th>
+                                        <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Total Mins</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="questionPlanBody" class="bg-white divide-y divide-slate-200">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="flex justify-end gap-3 pt-6 border-t border-slate-200">
+                    <button type="button" id="resetButton" class="px-6 py-2.5 border border-slate-300 shadow-sm text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors">Cancel</button>
+                    <button type="button" data-submit-status="draft" class="px-6 py-2.5 border border-slate-900 shadow-sm text-sm font-medium rounded-lg text-slate-900 bg-transparent hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 transition-colors">Save as Draft</button>
+                    <button type="button" data-submit-status="published" class="px-6 py-2.5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 transition-colors">Post Job</button>
+                </div>
+            </form>
+
+            <section class="bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-xl mt-12 text-slate-300">
+                <div class="flex items-center justify-between gap-4 mb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 text-white font-bold text-sm">11</span>
+                        <h2 class="text-xl font-semibold text-white">Returned JSON Payload</h2>
+                    </div>
+                    <button type="button" id="copyPayloadBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-md transition-colors border border-slate-700">Copy JSON</button>
+                </div>
+                <pre id="payloadOutput" class="bg-slate-950 p-4 rounded-xl overflow-auto text-sm font-mono max-h-96 border border-slate-800">Save a job to preview the external assessment payload here.</pre>
+            </section>
+        </div>
+    </main>
+</div>
+
+<div class="fixed right-6 bottom-6 px-4 py-3 rounded-lg bg-slate-900 text-white shadow-lg opacity-0 pointer-events-none transform translate-y-3 transition-all duration-200 z-50 text-sm font-medium" id="toast"></div>
+
+<script id="referenceData" type="application/json">{{ reference_data_json | safe }}</script>
+<script id="assessmentDefaults" type="application/json">{{ default_assessment_json | safe }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='/js/app.js') }}" defer></script>
+{% endblock %}
