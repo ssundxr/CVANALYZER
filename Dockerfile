@@ -19,9 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Python dependencies
 COPY requirements.txt .
 ARG GITHUB_TOKEN
-RUN git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+RUN echo "machine github.com login x-access-token password ${GITHUB_TOKEN}" > /root/.netrc && \
+    chmod 600 /root/.netrc
 RUN pip install --no-cache-dir -r requirements.txt
-RUN git config --global --unset url."https://${GITHUB_TOKEN}:@github.com/".insteadOf
+RUN rm /root/.netrc
 RUN pip install --no-cache-dir gunicorn uvicorn
 
 # Copy application code
