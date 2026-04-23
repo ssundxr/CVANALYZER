@@ -18,7 +18,7 @@ export default function CVAnalyzerPage() {
     formData.append('job_title', jobTitle)
 
     try {
-      const response = await fetch('http://localhost:8000/api/cv/analyze', {
+      const response = await fetch('/api/cv/analyze', {
         method: 'POST',
         body: formData,
       })
