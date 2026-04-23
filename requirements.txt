@@ -14,3 +14,4 @@ aiofiles
 passlib[bcrypt]
 python-jose[cryptography]
 bcrypt==4.0.1
+pdfplumber>=0.10.0

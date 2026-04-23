@@ -52,6 +52,9 @@ from .routers import candidate_auth, candidate_api
 app.include_router(candidate_auth.router)
 app.include_router(candidate_api.router)
 
+from cv_analyzer_api.router import router as cv_analyzer_router
+app.include_router(cv_analyzer_router)
+
 # Serve React SPA as the primary frontend.
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
 

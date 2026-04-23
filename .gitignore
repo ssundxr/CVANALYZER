@@ -5,3 +5,17 @@ __pycache__/
 assessment_recruiter.db
 uploads/*
 !uploads/.gitkeep
+
+# Node.js
+node_modules/
+**/node_modules/
+dist/
+build/
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Scratch and Logs
+scratch/
+*.log
