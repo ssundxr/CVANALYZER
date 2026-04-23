@@ -31,6 +31,14 @@ export default function TopNav() {
         >
           {isCandidate ? 'Home' : 'Home'}
         </button>
+        {isCandidate && (
+          <button 
+            className={location.pathname.includes('/cv-analyzer') ? 'active' : ''} 
+            onClick={() => navigate('/candidate/cv-analyzer')}
+          >
+            CV Analyzer
+          </button>
+        )}
         {!isCandidate && (
           <>
             <button className={location.pathname.includes('/post-job') ? 'active' : ''} onClick={() => navigate('/admin/post-job')}>Post Job</button>
