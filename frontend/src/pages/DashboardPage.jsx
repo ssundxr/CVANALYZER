@@ -14,12 +14,15 @@ function fmt(dt) {
 
 export default function DashboardPage() {
   const [jobs, setJobs] = useState([])
+  const [recentCodes, setRecentCodes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [codesLoading, setCodesLoading] = useState(true)
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
     fetchJobs()
+    fetchCodes()
   }, [])
 
   const fetchJobs = () => {
@@ -27,6 +30,13 @@ export default function DashboardPage() {
       .then(d => setJobs(d.items || []))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
+  }
+
+  const fetchCodes = () => {
+    api.getRecentProctorCodes()
+      .then(d => setRecentCodes(d.items || []))
+      .catch(e => console.error("Failed to fetch codes:", e))
+      .finally(() => setCodesLoading(false))
   }
 
   const togglePublish = async (jobId, currentStatus) => {
@@ -118,6 +128,63 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card mt-8" style={{ padding: 0, marginTop: '30px' }}>
+        <div className="card-header" style={{ padding: '20px', borderBottom: '1px solid var(--border)', marginBottom: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: 18 }}>Recent Proctor Codes</h2>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Top 20 Generations</span>
+        </div>
+        
+        {codesLoading ? (
+          <div style={{ padding: 40, textAlign: 'center' }}><span className="spinner" /></div>
+        ) : recentCodes.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No codes generated yet.</div>
+        ) : (
+          <div className="table-responsive" style={{ padding: '10px' }}>
+            <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ textAlign: 'left', background: 'var(--background-alt)', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                <tr>
+                  <th style={{ padding: '12px 20px' }}>Code</th>
+                  <th style={{ padding: '12px 20px' }}>Candidate</th>
+                  <th style={{ padding: '12px 20px' }}>Target Job</th>
+                  <th style={{ padding: '12px 20px' }}>Generated At</th>
+                  <th style={{ padding: '12px 20px' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentCodes.map(item => (
+                  <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '16px 20px' }}>
+                      <code style={{ background: 'rgba(16, 157, 184, 0.1)', padding: '4px 8px', borderRadius: '4px', color: 'var(--primary)', fontWeight: 'bold', fontSize: '14px' }}>
+                        {item.code}
+                      </code>
+                    </td>
+                    <td style={{ padding: '16px 20px' }}>
+                      <div style={{ fontWeight: '500', color: 'var(--text)', fontSize: '14px' }}>{item.candidate_name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.candidate_email}</div>
+                    </td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px' }}>{item.job_title}</td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: 'var(--text-muted)' }}>{new Date(item.created_at).toLocaleString('en-GB')}</td>
+                    <td style={{ padding: '16px 20px' }}>
+                      <span style={{ 
+                        fontSize: '10px', 
+                        padding: '4px 8px', 
+                        borderRadius: '20px', 
+                        background: item.status === 'pending' ? 'var(--background-alt)' : 'rgba(16, 157, 184, 0.1)', 
+                        color: item.status === 'pending' ? 'var(--text-muted)' : 'var(--primary)',
+                        textTransform: 'uppercase',
+                        fontWeight: 'bold'
+                      }}>
+                        {item.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

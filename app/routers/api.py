@@ -194,3 +194,36 @@ def send_assessment(app_id: int, db: Session = Depends(get_db), _: AdminUser = D
     NotificationService.send_proctor_code(app.candidate.email, app.candidate.display_name, job_title, proctor_code)
     
     return {"message": "Assessment sent successfully to candidate.", "attempt_id": attempt.id}
+
+@router.get("/recent-proctor-codes")
+def get_recent_proctor_codes(db: Session = Depends(get_db), _: AdminUser = Depends(require_admin_api)):
+    from ..models import AssessmentAttempt, JobApplication, Candidate, JobPost
+    from sqlalchemy.orm import joinedload
+    
+    stmt = (
+        select(AssessmentAttempt)
+        .options(
+            joinedload(AssessmentAttempt.application)
+            .joinedload(JobApplication.candidate),
+            joinedload(AssessmentAttempt.application)
+            .joinedload(JobApplication.job_post)
+        )
+        .where(AssessmentAttempt.proctor_code != None)
+        .order_by(AssessmentAttempt.created_at.desc())
+        .limit(20)
+    )
+    attempts = db.scalars(stmt).all()
+    
+    results = []
+    for att in attempts:
+        results.append({
+            "id": att.id,
+            "code": att.proctor_code,
+            "created_at": att.created_at.isoformat(),
+            "status": att.status,
+            "candidate_name": att.application.candidate.display_name,
+            "candidate_email": att.application.candidate.email,
+            "job_title": att.application.job_post.job_details.get("job_title", "Unknown Job")
+        })
+    
+    return {"items": results}

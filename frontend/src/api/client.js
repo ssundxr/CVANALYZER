@@ -44,4 +44,5 @@ export const api = {
   getJobApplications: (jobId) => request('GET', `/api/jobs/${jobId}/applications`),
   getApplication: (appId) => request('GET', `/api/applications/${appId}`),
   sendAssessment: (appId) => request('POST', `/api/applications/${appId}/send-assessment`),
+  getRecentProctorCodes: () => request('GET', '/api/recent-proctor-codes'),
 }
