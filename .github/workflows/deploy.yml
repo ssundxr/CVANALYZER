@@ -39,5 +39,5 @@ jobs:
 
       - name: Post-Deployment Config
         run: |
-          # Ensure persistent storage mount is active (handled by infrastructure layer generally)
+          az webapp config appsettings set --name ${{ secrets.AZURE_WEBAPP_NAME }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'CodeRAG-Group' }} --settings WEBSITES_PORT=8080
           echo "Deployment successful to ${{ secrets.AZURE_WEBAPP_NAME }}"

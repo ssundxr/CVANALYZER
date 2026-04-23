@@ -7,7 +7,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # --- Stage 2: Serve Application ---
-FROM python:3.11-slim
+FROM python:3.12-slim
 WORKDIR /app
 
 # Install system dependencies
@@ -28,14 +28,15 @@ RUN pip install --no-cache-dir gunicorn uvicorn
 
 # Copy application code
 COPY app/ ./app/
+COPY cv_analyzer_api/ ./cv_analyzer_api/
 COPY --from=build-frontend /frontend-build/dist ./frontend/dist
 
-# Expose port 8000 for App Service
-EXPOSE 8000
+# Expose port 8080 for App Service
+EXPOSE 8080
 
 # Set environment variables for production
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
+ENV PORT=8080
 
 # Start Gunicorn with Uvicorn workers
-CMD gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
+CMD gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8080
