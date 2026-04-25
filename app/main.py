@@ -17,6 +17,7 @@ import subprocess
 import os
 import time
 import httpx
+import sys
 from fastapi import Request
 from fastapi.responses import StreamingResponse
 
@@ -32,13 +33,14 @@ async def lifespan(app: FastAPI):
         db_path = str(BASE_DIR / db_path)
     
     print(f"Starting sqlite-web on {db_path}")
+    # Use sys.executable to ensure we use the same python environment
     proc = subprocess.Popen([
-        "sqlite-web", 
+        sys.executable, "-m", "sqlite_web", 
         db_path, 
         "--port", "8001", 
         "--host", "0.0.0.0",
         "--no-browser",
-        "--read-only" # Optional: remove for full write access
+        "--read-only"
     ])
     
     yield
