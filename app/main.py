@@ -26,27 +26,33 @@ async def lifespan(app: FastAPI):
     # Initialize DB
     init_db()
     
-    # Start sqlite-web in the background on port 8001
+    # Start Datasette in the background on port 8001
     db_path = settings.database_url.replace("sqlite:///", "")
     if not db_path.startswith("/") and ":" not in db_path:
-        # Relative path, make it absolute relative to BASE_DIR
         db_path = str(BASE_DIR / db_path)
     
-    print(f"Starting sqlite-web on {db_path}")
-    # Use sys.executable to ensure we use the same python environment
-    proc = subprocess.Popen([
-        sys.executable, "-m", "sqlite_web", 
-        db_path, 
-        "--port", "8001", 
-        "--host", "0.0.0.0",
-        "--no-browser",
-        "--read-only"
-    ])
+    print(f"Starting Datasette on {db_path} with base-url /db-explorer/")
+    try:
+        # Use sys.executable to ensure we use the same python environment
+        # --setting base_url /db-explorer/ ensures internal links work with the proxy
+        proc = subprocess.Popen([
+            sys.executable, "-m", "datasette", "serve",
+            db_path, 
+            "--port", "8001", 
+            "--host", "127.0.0.1",
+            "--setting", "base_url", "/db-explorer/",
+            "--cors"
+        ])
+        app.state.db_proc = proc
+    except Exception as e:
+        print(f"WARNING: Failed to start Datasette: {e}")
+        app.state.db_proc = None
     
     yield
     
     # Cleanup
-    proc.terminate()
+    if app.state.db_proc:
+        app.state.db_proc.terminate()
 
 app = FastAPI(
     title="SeekATS Assessment Recruiter API",
@@ -55,42 +61,34 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── Database Explorer Proxy ───────────────────────────────────────────────
+# ── Database Explorer Proxy (Datasette) ──────────────────────────────────
 @app.api_route("/db-explorer/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def db_explorer_proxy(request: Request, path: str):
-    url = f"http://localhost:8001/{path}"
+    # Datasette is configured with base_url /db-explorer/, so we proxy to the root
+    # but include the /db-explorer/ prefix in the internal request
+    url = f"http://127.0.0.1:8001/db-explorer/{path}"
     
-    # Pass along query params
     if request.query_params:
         url += f"?{request.query_params}"
     
-    async with httpx.AsyncClient() as client:
-        # Proxy the request
-        content = await request.body()
-        resp = await client.request(
-            method=request.method,
-            url=url,
-            headers={k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")},
-            content=content,
-            follow_redirects=False
-        )
-        
-        # Handle redirects manually to keep them within /db-explorer/
-        if resp.status_code in (301, 302, 303, 307, 308):
-            location = resp.headers.get("Location", "")
-            if location.startswith("/"):
-                location = f"/db-explorer{location}"
-            return StreamingResponse(
-                resp.aiter_raw(), 
-                status_code=resp.status_code, 
-                headers={"Location": location}
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            content = await request.body()
+            resp = await client.request(
+                method=request.method,
+                url=url,
+                headers={k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length", "accept-encoding")},
+                content=content,
+                follow_redirects=False
             )
-
-        return StreamingResponse(
-            resp.aiter_raw(),
-            status_code=resp.status_code,
-            headers={k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding")}
-        )
+            
+            return StreamingResponse(
+                resp.aiter_raw(),
+                status_code=resp.status_code,
+                headers={k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding")}
+            )
+    except Exception as e:
+        return HTMLResponse(f"<h3>Database Explorer Unavailable</h3><p>{e}</p>", status_code=503)
 
 app.add_middleware(
     CORSMiddleware,
