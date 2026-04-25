@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import PostJobPage from './pages/PostJobPage'
@@ -45,6 +46,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Landing Page */}
+        <Route path="/" element={<HomePage />} />
+
         {/* Recruiter Routes */}
         <Route path="/admin/login" element={<LoginPage />} />
         <Route path="/admin/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
@@ -59,8 +63,8 @@ export default function App() {
         <Route path="/candidate/assessment/:attemptId" element={<CandidateRoute><ProctoredAssessment /></CandidateRoute>} />
         <Route path="/candidate/cv-analyzer" element={<CandidateRoute><CVAnalyzerPage /></CandidateRoute>} />
 
-        {/* Catch-all redirect to Admin Login or Dashboard */}
-        <Route path="*" element={<Navigate to={localStorage.getItem('auth_token') ? '/admin/dashboard' : '/admin/login'} replace />} />
+        {/* Catch-all redirect to Home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )
