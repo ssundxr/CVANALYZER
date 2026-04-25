@@ -71,23 +71,30 @@ async def db_explorer_proxy(request: Request, path: str):
     if request.query_params:
         url += f"?{request.query_params}"
     
+    client = httpx.AsyncClient(timeout=30.0)
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            content = await request.body()
-            resp = await client.request(
-                method=request.method,
-                url=url,
-                headers={k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length", "accept-encoding")},
-                content=content,
-                follow_redirects=False
-            )
-            
-            return StreamingResponse(
-                resp.aiter_raw(),
-                status_code=resp.status_code,
-                headers={k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding")}
-            )
+        # Build the proxy request
+        content = await request.body()
+        headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length", "accept-encoding")}
+        
+        # We use a streaming request to handle potentially large data and avoid StreamConsumed
+        proxy_req = client.build_request(
+            method=request.method,
+            url=url,
+            headers=headers,
+            content=content
+        )
+        
+        proxy_resp = await client.send(proxy_req, stream=True)
+        
+        return StreamingResponse(
+            proxy_resp.aiter_raw(),
+            status_code=proxy_resp.status_code,
+            headers={k: v for k, v in proxy_resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding")},
+            background=proxy_resp.aclose # Close response after streaming finishes
+        )
     except Exception as e:
+        await client.aclose()
         return HTMLResponse(f"<h3>Database Explorer Unavailable</h3><p>{e}</p>", status_code=503)
 
 app.add_middleware(
