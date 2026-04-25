@@ -13,11 +13,38 @@ from .database import init_db
 from .routers import api, auth
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    init_db()
-    yield
+import subprocess
+import os
+import time
+import httpx
+from fastapi import Request
+from fastapi.responses import StreamingResponse
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize DB
+    init_db()
+    
+    # Start sqlite-web in the background on port 8001
+    db_path = settings.database_url.replace("sqlite:///", "")
+    if not db_path.startswith("/") and ":" not in db_path:
+        # Relative path, make it absolute relative to BASE_DIR
+        db_path = str(BASE_DIR / db_path)
+    
+    print(f"Starting sqlite-web on {db_path}")
+    proc = subprocess.Popen([
+        "sqlite-web", 
+        db_path, 
+        "--port", "8001", 
+        "--host", "0.0.0.0",
+        "--no-browser",
+        "--read-only" # Optional: remove for full write access
+    ])
+    
+    yield
+    
+    # Cleanup
+    proc.terminate()
 
 app = FastAPI(
     title="SeekATS Assessment Recruiter API",
@@ -25,6 +52,43 @@ app = FastAPI(
     version="0.2.0",
     lifespan=lifespan,
 )
+
+# ── Database Explorer Proxy ───────────────────────────────────────────────
+@app.api_route("/db-explorer/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def db_explorer_proxy(request: Request, path: str):
+    url = f"http://localhost:8001/{path}"
+    
+    # Pass along query params
+    if request.query_params:
+        url += f"?{request.query_params}"
+    
+    async with httpx.AsyncClient() as client:
+        # Proxy the request
+        content = await request.body()
+        resp = await client.request(
+            method=request.method,
+            url=url,
+            headers={k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")},
+            content=content,
+            follow_redirects=False
+        )
+        
+        # Handle redirects manually to keep them within /db-explorer/
+        if resp.status_code in (301, 302, 303, 307, 308):
+            location = resp.headers.get("Location", "")
+            if location.startswith("/"):
+                location = f"/db-explorer{location}"
+            return StreamingResponse(
+                resp.aiter_raw(), 
+                status_code=resp.status_code, 
+                headers={"Location": location}
+            )
+
+        return StreamingResponse(
+            resp.aiter_raw(),
+            status_code=resp.status_code,
+            headers={k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding")}
+        )
 
 app.add_middleware(
     CORSMiddleware,
