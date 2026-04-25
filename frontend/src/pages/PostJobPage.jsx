@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { api } from '../api/client'
 
-// ── Tag/chip input ──────────────────────────────────────────────────────────
-function TagInput({ value = [], onChange, suggestions = [], placeholder }) {
+// ── Tag Input (HP Style) ──────────────────────────────────────────────────
+function HPTagInput({ value = [], onChange, suggestions = [], placeholder }) {
   const [input, setInput] = useState('')
   const [open, setOpen] = useState(false)
 
@@ -23,14 +23,14 @@ function TagInput({ value = [], onChange, suggestions = [], placeholder }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <div className="tag-input-wrap">
+      <div className="hp-tag-wrap">
         {value.map((t, i) => (
-          <span key={i} className="tag">
-            {t} <button type="button" className="tag-del" onClick={() => remove(i)}>×</button>
+          <span key={i} className="hp-tag">
+            {t} <span className="hp-tag-del" onClick={() => remove(i)}>×</span>
           </span>
         ))}
         <input
-          className="tag-bare-input"
+          className="hp-tag-input"
           value={input}
           placeholder={value.length === 0 ? placeholder : ''}
           onChange={e => { setInput(e.target.value); setOpen(true) }}
@@ -39,44 +39,25 @@ function TagInput({ value = [], onChange, suggestions = [], placeholder }) {
             if (e.key === 'Backspace' && !input && value.length) remove(value.length - 1)
           }}
           onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onBlur={() => setTimeout(() => setOpen(false), 200)}
         />
       </div>
       {open && filtered.length > 0 && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
-          background: '#111', border: '1px solid var(--border-mid)', borderRadius: 'var(--radius)',
-          marginTop: 4, overflow: 'hidden',
+          background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px',
+          marginTop: 4, overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
         }}>
           {filtered.map((s, i) => (
             <div key={i}
-              style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13 }}
+              style={{ padding: '10px 16px', cursor: 'pointer', fontSize: 13, color: '#1e293b' }}
               onMouseDown={() => add(s)}
-              onMouseEnter={e => e.currentTarget.style.background = '#1a1a1a'}
+              onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >{s}</div>
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-// ── Steps progress bar ──────────────────────────────────────────────────────
-function Steps({ current, steps }) {
-  return (
-    <div className="wizard-steps">
-      {steps.map((s, i) => (
-        <>
-          <div key={i} className="wizard-step">
-            <div className={`step-num ${i < current ? 'done' : i === current ? 'current' : ''}`}>
-              {i < current ? '✓' : i + 1}
-            </div>
-            <span className={`step-label ${i === current ? 'current' : ''}`}>{s}</span>
-          </div>
-          {i < steps.length - 1 && <div key={`d-${i}`} className="step-divider" />}
-        </>
-      ))}
     </div>
   )
 }
@@ -148,14 +129,17 @@ export default function PostJobPage() {
     try {
       const fd = new FormData()
       const payload = { ...form }
-      payload.salary_details.minimum_salary = Number(payload.salary_details.minimum_salary) || null
-      payload.salary_details.maximum_salary = Number(payload.salary_details.maximum_salary) || null
-      payload.candidate_profile.age_range.min = Number(payload.candidate_profile.age_range.min) || null
-      payload.candidate_profile.age_range.max = Number(payload.candidate_profile.age_range.max) || null
-      payload.experience_requirement.work_experience_years.min = Number(payload.experience_requirement.work_experience_years.min) || null
-      payload.experience_requirement.work_experience_years.max = Number(payload.experience_requirement.work_experience_years.max) || null
-      payload.experience_requirement.gcc_experience_years.min = Number(payload.experience_requirement.gcc_experience_years.min) || null
-      payload.experience_requirement.gcc_experience_years.max = Number(payload.experience_requirement.gcc_experience_years.max) || null
+      // Convert numeric fields
+      const toNum = (o, k) => { if (o[k] !== '') o[k] = Number(o[k]) || null }
+      toNum(payload.salary_details, 'minimum_salary')
+      toNum(payload.salary_details, 'maximum_salary')
+      toNum(payload.candidate_profile.age_range, 'min')
+      toNum(payload.candidate_profile.age_range, 'max')
+      toNum(payload.experience_requirement.work_experience_years, 'min')
+      toNum(payload.experience_requirement.work_experience_years, 'max')
+      toNum(payload.experience_requirement.gcc_experience_years, 'min')
+      toNum(payload.experience_requirement.gcc_experience_years, 'max')
+
       fd.append('payload', JSON.stringify(payload))
       await api.createJob(fd)
       nav('/dashboard')
@@ -165,304 +149,334 @@ export default function PostJobPage() {
     }
   }
 
-  // ── Step renderers ─────────────────────────────────────────────────────────
-  const Step1 = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="card">
-        <div className="section-hd"><h3>01</h3><h2>Employer Details</h2></div>
-        <div className="form-row" style={{ gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Company Type</label>
-            <select className="form-select" value={F('employer_details.type_of_company')} onChange={e => set('employer_details.type_of_company', e.target.value)}>
-              <option value="">Select type</option>
-              {ref?.company_types?.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Company Name</label>
-            <input className="form-input" value={F('employer_details.company_name')} onChange={e => set('employer_details.company_name', e.target.value)} placeholder="e.g. TalentBridge Global" />
-          </div>
-        </div>
-        <div className="form-row mt-3" style={{ gap: 16, alignItems: 'center' }}>
-          <div className="form-group">
-            <label className="form-label">Expiry Date</label>
-            <input className="form-input" type="date" value={F('employer_details.expiry_date') || ''} onChange={e => set('employer_details.expiry_date', e.target.value || null)} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Publish Job</label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 4 }}>
-              <input type="checkbox" checked={form.employer_details.publish_this_job} onChange={e => set('employer_details.publish_this_job', e.target.checked)} />
-              <span className="text-sm">Make this job publicly visible</span>
-            </label>
-          </div>
-        </div>
-      </div>
+  // ── Render Helpers (Direct JSX to fix focus bug) ──────────────────────────
 
-      <div className="card">
-        <div className="section-hd"><h3>02</h3><h2>Job Details</h2></div>
-        <div className="form-group mb-4">
-          <label className="form-label">Job Title <span style={{ color: 'var(--error)' }}>*</span></label>
-          <input className="form-input" value={F('job_details.job_title')} onChange={e => set('job_details.job_title', e.target.value)} placeholder="e.g. Senior Software Engineer" />
-        </div>
-        <div className="form-row mb-4" style={{ gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Job Type</label>
-            <select className="form-select" value={F('job_details.job_type')} onChange={e => set('job_details.job_type', e.target.value)}>
-              <option value="">Select</option>
-              {ref?.job_types?.map(t => <option key={t}>{t}</option>)}
-            </select>
+  const renderStep = () => {
+    switch (step) {
+      case 0: return (
+        <div className="hp-step-content">
+          <div className="hp-section-module">
+            <div className="hp-module-header">
+              <span className="hp-module-num">01 //</span>
+              <h2 className="hp-module-title">Employer Identification</h2>
+            </div>
+            <div className="hp-field-grid">
+              <div className="hp-form-group">
+                <label className="hp-label">Company Type</label>
+                <select className="hp-select" value={F('employer_details.type_of_company')} onChange={e => set('employer_details.type_of_company', e.target.value)}>
+                  <option value="">Select type</option>
+                  {ref?.company_types?.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Legal Entity Name</label>
+                <input className="hp-input" value={F('employer_details.company_name')} onChange={e => set('employer_details.company_name', e.target.value)} placeholder="e.g. TalentBridge Global" />
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Listing Expiry</label>
+                <input className="hp-input" type="date" value={F('employer_details.expiry_date') || ''} onChange={e => set('employer_details.expiry_date', e.target.value || null)} />
+              </div>
+              <div className="hp-form-group" style={{ display: 'flex', alignItems: 'center' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', marginTop: 24 }}>
+                  <input type="checkbox" style={{ width: 18, height: 18 }} checked={form.employer_details.publish_this_job} onChange={e => set('employer_details.publish_this_job', e.target.checked)} />
+                  <span className="hp-label" style={{ marginBottom: 0 }}>Public Visibility</span>
+                </label>
+              </div>
+            </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Work Mode</label>
-            <select className="form-select" value={F('job_details.job_location_type')} onChange={e => set('job_details.job_location_type', e.target.value)}>
-              <option value="">Select</option>
-              {ref?.job_locations?.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="form-row mb-4" style={{ gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Industry</label>
-            <select className="form-select" value={F('job_details.industry')} onChange={e => set('job_details.industry', e.target.value)}>
-              <option value="">Select</option>
-              {ref?.industries?.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Functional Area</label>
-            <select className="form-select" value={F('job_details.functional_area')} onChange={e => set('job_details.functional_area', e.target.value)}>
-              <option value="">Select</option>
-              {ref?.functional_areas?.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Designation</label>
-            <select className="form-select" value={F('job_details.designation')} onChange={e => set('job_details.designation', e.target.value)}>
-              <option value="">Select</option>
-              {ref?.designations?.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="form-group mb-4">
-          <label className="form-label">Roles & Responsibilities</label>
-          <textarea className="form-textarea" rows={5} value={F('job_details.roles_and_responsibilities')} onChange={e => set('job_details.roles_and_responsibilities', e.target.value)} placeholder="Describe key responsibilities of this role..." />
-        </div>
-        <div className="form-group mb-4">
-          <label className="form-label">Desired Candidate Profile</label>
-          <textarea className="form-textarea" rows={4} value={F('job_details.desired_candidate_profile')} onChange={e => set('job_details.desired_candidate_profile', e.target.value)} placeholder="Describe the ideal candidate..." />
-        </div>
-        <div className="form-row mb-4" style={{ gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Country</label>
-            <select className="form-select" value={F('job_details.country')} onChange={e => { set('job_details.country', e.target.value); set('job_details.state', ''); set('job_details.city', '') }}>
-              <option value="">Select</option>
-              {ref?.countries?.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">State</label>
-            <select className="form-select" value={F('job_details.state')} onChange={e => { set('job_details.state', e.target.value); set('job_details.city', '') }}>
-              <option value="">Select</option>
-              {F('job_details.country') && ref?.location_hierarchy?.[F('job_details.country')]
-                ? Object.keys(ref.location_hierarchy[F('job_details.country')]).map(s => <option key={s}>{s}</option>)
-                : ref?.states?.map(s => <option key={s}>{s}</option>)
-              }
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">City</label>
-            <select className="form-select" value={F('job_details.city')} onChange={e => set('job_details.city', e.target.value)}>
-              <option value="">Select</option>
-              {F('job_details.country') && F('job_details.state') && ref?.location_hierarchy?.[F('job_details.country')]?.[F('job_details.state')]
-                ? ref.location_hierarchy[F('job_details.country')][F('job_details.state')].map(c => <option key={c}>{c}</option>)
-                : ref?.cities?.map(c => <option key={c}>{c}</option>)
-              }
-            </select>
-          </div>
-        </div>
-        <div className="form-row" style={{ gap: 16 }}>
-          <div className="form-group" style={{ flex: 2 }}>
-            <label className="form-label">Keywords</label>
-            <TagInput value={form.job_details.keywords} onChange={v => set('job_details.keywords', v)} placeholder="Add keywords..." />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Vacancies</label>
-            <input className="form-input" type="number" min={1} value={F('job_details.number_of_vacancies')} onChange={e => set('job_details.number_of_vacancies', Number(e.target.value))} />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
 
-  const Step2 = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="card">
-        <div className="section-hd"><h3>03</h3><h2>Salary</h2></div>
-        <div className="form-row" style={{ gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Currency</label>
-            <select className="form-select" value={F('salary_details.currency')} onChange={e => set('salary_details.currency', e.target.value)}>
-              {ref?.currencies?.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Min Salary</label>
-            <input className="form-input" type="number" value={F('salary_details.minimum_salary')} onChange={e => set('salary_details.minimum_salary', e.target.value)} placeholder="0" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Max Salary</label>
-            <input className="form-input" type="number" value={F('salary_details.maximum_salary')} onChange={e => set('salary_details.maximum_salary', e.target.value)} placeholder="0" />
+          <div className="hp-section-module">
+            <div className="hp-module-header">
+              <span className="hp-module-num">02 //</span>
+              <h2 className="hp-module-title">Position Parameters</h2>
+            </div>
+            <div className="hp-field-grid">
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Job Title <span style={{ color: 'var(--error)' }}>*</span></label>
+                <input className="hp-input" value={F('job_details.job_title')} onChange={e => set('job_details.job_title', e.target.value)} placeholder="e.g. Senior Systems Engineer" />
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Employment Type</label>
+                <select className="hp-select" value={F('job_details.job_type')} onChange={e => set('job_details.job_type', e.target.value)}>
+                  <option value="">Select</option>
+                  {ref?.job_types?.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Work Environment</label>
+                <select className="hp-select" value={F('job_details.job_location_type')} onChange={e => set('job_details.job_location_type', e.target.value)}>
+                  <option value="">Select</option>
+                  {ref?.job_locations?.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Vertical / Industry</label>
+                <select className="hp-select" value={F('job_details.industry')} onChange={e => set('job_details.industry', e.target.value)}>
+                  <option value="">Select</option>
+                  {ref?.industries?.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Functional Domain</label>
+                <select className="hp-select" value={F('job_details.functional_area')} onChange={e => set('job_details.functional_area', e.target.value)}>
+                  <option value="">Select</option>
+                  {ref?.functional_areas?.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Technical Objectives & Responsibilities</label>
+                <textarea className="hp-textarea" value={F('job_details.roles_and_responsibilities')} onChange={e => set('job_details.roles_and_responsibilities', e.target.value)} placeholder="Enumerate the core technical objectives of this position..." />
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Ideal Candidate Profile</label>
+                <textarea className="hp-textarea" style={{ minHeight: 80 }} value={F('job_details.desired_candidate_profile')} onChange={e => set('job_details.desired_candidate_profile', e.target.value)} placeholder="Define the technical and behavioral requirements..." />
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Primary Region (Country)</label>
+                <select className="hp-select" value={F('job_details.country')} onChange={e => { set('job_details.country', e.target.value); set('job_details.state', ''); set('job_details.city', '') }}>
+                  <option value="">Select</option>
+                  {ref?.countries?.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">State / Province</label>
+                <select className="hp-select" value={F('job_details.state')} onChange={e => { set('job_details.state', e.target.value); set('job_details.city', '') }}>
+                  <option value="">Select</option>
+                  {F('job_details.country') && ref?.location_hierarchy?.[F('job_details.country')]
+                    ? Object.keys(ref.location_hierarchy[F('job_details.country')]).map(s => <option key={s}>{s}</option>)
+                    : ref?.states?.map(s => <option key={s}>{s}</option>)
+                  }
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Metropolis / City</label>
+                <select className="hp-select" value={F('job_details.city')} onChange={e => set('job_details.city', e.target.value)}>
+                  <option value="">Select</option>
+                  {F('job_details.country') && F('job_details.state') && ref?.location_hierarchy?.[F('job_details.country')]?.[F('job_details.state')]
+                    ? ref.location_hierarchy[F('job_details.country')][F('job_details.state')].map(c => <option key={c}>{c}</option>)
+                    : ref?.cities?.map(c => <option key={c}>{c}</option>)
+                  }
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Opening Count</label>
+                <input className="hp-input" type="number" min={1} value={F('job_details.number_of_vacancies')} onChange={e => set('job_details.number_of_vacancies', Number(e.target.value))} />
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Strategic Keywords (ATS Tags)</label>
+                <HPTagInput value={form.job_details.keywords} onChange={v => set('job_details.keywords', v)} placeholder="Add technical tags..." />
+              </div>
+            </div>
           </div>
         </div>
-        <div className="form-group mt-3">
-          <label className="form-label">Other Benefits</label>
-          <input className="form-input" value={F('salary_details.other_benefits')} onChange={e => set('salary_details.other_benefits', e.target.value)} placeholder="Health insurance, visa, annual flight..." />
-        </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 12 }}>
-          <input type="checkbox" checked={form.salary_details.hide_salary_from_job_seekers} onChange={e => set('salary_details.hide_salary_from_job_seekers', e.target.checked)} />
-          <span className="text-sm">Hide salary from candidates</span>
-        </label>
-      </div>
+      )
+      case 1: return (
+        <div className="hp-step-content">
+          <div className="hp-section-module">
+            <div className="hp-module-header">
+              <span className="hp-module-num">03 //</span>
+              <h2 className="hp-module-title">Compensation Framework</h2>
+            </div>
+            <div className="hp-field-grid">
+              <div className="hp-form-group">
+                <label className="hp-label">Currency Code</label>
+                <select className="hp-select" value={F('salary_details.currency')} onChange={e => set('salary_details.currency', e.target.value)}>
+                  {ref?.currencies?.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="hp-label">Min Threshold</label>
+                    <input className="hp-input" type="number" value={F('salary_details.minimum_salary')} onChange={e => set('salary_details.minimum_salary', e.target.value)} placeholder="0" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="hp-label">Max Threshold</label>
+                    <input className="hp-input" type="number" value={F('salary_details.maximum_salary')} onChange={e => set('salary_details.maximum_salary', e.target.value)} placeholder="0" />
+                  </div>
+                </div>
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Ancillary Benefits</label>
+                <input className="hp-input" value={F('salary_details.other_benefits')} onChange={e => set('salary_details.other_benefits', e.target.value)} placeholder="Health, Equity, Relocation..." />
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" style={{ width: 18, height: 18 }} checked={form.salary_details.hide_salary_from_job_seekers} onChange={e => set('salary_details.hide_salary_from_job_seekers', e.target.checked)} />
+                  <span className="hp-label" style={{ marginBottom: 0 }}>Encapsulate compensation from public view</span>
+                </label>
+              </div>
+            </div>
+          </div>
 
-      <div className="card">
-        <div className="section-hd"><h3>04</h3><h2>Candidate Profile</h2></div>
-        <div className="form-row mb-4" style={{ gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Gender</label>
-            <select className="form-select" value={F('candidate_profile.gender')} onChange={e => set('candidate_profile.gender', e.target.value)}>
-              <option value="">Any</option>
-              {['Male', 'Female', 'Any'].map(g => <option key={g}>{g}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Nationality</label>
-            <select className="form-select" value={F('candidate_profile.nationality')} onChange={e => set('candidate_profile.nationality', e.target.value)}>
-              <option value="">Any</option>
-              {ref?.nationalities?.map(n => <option key={n}>{n}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Visa Status</label>
-            <select className="form-select" value={F('candidate_profile.visa_status')} onChange={e => set('candidate_profile.visa_status', e.target.value)}>
-              <option value="">Any</option>
-              {ref?.visa_statuses?.map(v => <option key={v}>{v}</option>)}
-            </select>
+          <div className="hp-section-module">
+            <div className="hp-module-header">
+              <span className="hp-module-num">04 //</span>
+              <h2 className="hp-module-title">Demographic Requirements</h2>
+            </div>
+            <div className="hp-field-grid">
+              <div className="hp-form-group">
+                <label className="hp-label">Gender Specification</label>
+                <select className="hp-select" value={F('candidate_profile.gender')} onChange={e => set('candidate_profile.gender', e.target.value)}>
+                  <option value="">Agnostic</option>
+                  {['Male', 'Female', 'Any'].map(g => <option key={g}>{g}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Nationality</label>
+                <select className="hp-select" value={F('candidate_profile.nationality')} onChange={e => set('candidate_profile.nationality', e.target.value)}>
+                  <option value="">Agnostic</option>
+                  {ref?.nationalities?.map(n => <option key={n}>{n}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Visa Classification</label>
+                <select className="hp-select" value={F('candidate_profile.visa_status')} onChange={e => set('candidate_profile.visa_status', e.target.value)}>
+                  <option value="">Any</option>
+                  {ref?.visa_statuses?.map(v => <option key={v}>{v}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group">
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="hp-label">Age Min</label>
+                    <input className="hp-input" type="number" value={F('candidate_profile.age_range.min')} onChange={e => set('candidate_profile.age_range.min', e.target.value)} placeholder="18" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="hp-label">Age Max</label>
+                    <input className="hp-input" type="number" value={F('candidate_profile.age_range.max')} onChange={e => set('candidate_profile.age_range.max', e.target.value)} placeholder="60" />
+                  </div>
+                </div>
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Linguistic Proficiencies</label>
+                <HPTagInput value={form.candidate_profile.languages_known} onChange={v => set('candidate_profile.languages_known', v)} suggestions={ref?.languages || []} placeholder="Add languages..." />
+              </div>
+            </div>
           </div>
         </div>
-        <div className="form-row mb-4" style={{ gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">Age Min</label>
-            <input className="form-input" type="number" value={F('candidate_profile.age_range.min')} onChange={e => set('candidate_profile.age_range.min', e.target.value)} placeholder="18" />
+      )
+      case 2: return (
+        <div className="hp-step-content">
+          <div className="hp-section-module">
+            <div className="hp-module-header">
+              <span className="hp-module-num">05 //</span>
+              <h2 className="hp-module-title">Skill Matrix</h2>
+            </div>
+            <div className="hp-field-grid">
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Functional Competencies</label>
+                <HPTagInput value={form.skills_requirement.functional_skills} onChange={v => set('skills_requirement.functional_skills', v)} suggestions={ref?.functional_skills || []} placeholder="Add skills..." />
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Professional Core Skills</label>
+                <HPTagInput value={form.skills_requirement.professional_skills} onChange={v => set('skills_requirement.professional_skills', v)} suggestions={ref?.professional_skills || []} placeholder="Add skills..." />
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">IT / Tool Stack</label>
+                <HPTagInput value={form.skills_requirement.it_skills} onChange={v => set('skills_requirement.it_skills', v)} suggestions={ref?.it_skills || []} placeholder="Add technology..." />
+              </div>
+            </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Age Max</label>
-            <input className="form-input" type="number" value={F('candidate_profile.age_range.max')} onChange={e => set('candidate_profile.age_range.max', e.target.value)} placeholder="60" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Availability</label>
-            <select className="form-select" value={F('candidate_profile.availability')} onChange={e => set('candidate_profile.availability', e.target.value)}>
-              <option value="">Any</option>
-              {ref?.availability_options?.map(a => <option key={a}>{a}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Languages Known</label>
-          <TagInput value={form.candidate_profile.languages_known} onChange={v => set('candidate_profile.languages_known', v)} suggestions={ref?.languages || []} placeholder="Add language..." />
-        </div>
-      </div>
-    </div>
-  )
 
-  const Step3 = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="card">
-        <div className="section-hd"><h3>05</h3><h2>Skills</h2></div>
-        <div className="form-group mb-4">
-          <label className="form-label">Functional Skills</label>
-          <TagInput value={form.skills_requirement.functional_skills} onChange={v => set('skills_requirement.functional_skills', v)} suggestions={ref?.functional_skills || []} placeholder="Add functional skill..." />
-        </div>
-        <div className="form-group mb-4">
-          <label className="form-label">Professional Skills</label>
-          <TagInput value={form.skills_requirement.professional_skills} onChange={v => set('skills_requirement.professional_skills', v)} suggestions={ref?.professional_skills || []} placeholder="Add professional skill..." />
-        </div>
-        <div className="form-group">
-          <label className="form-label">IT Skills</label>
-          <TagInput value={form.skills_requirement.it_skills} onChange={v => set('skills_requirement.it_skills', v)} suggestions={ref?.it_skills || []} placeholder="Add IT skill..." />
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="section-hd"><h3>06</h3><h2>Experience</h2></div>
-        <div className="form-row" style={{ gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">General Exp — Min (yrs)</label>
-            <input className="form-input" type="number" min={0} value={F('experience_requirement.work_experience_years.min')} onChange={e => set('experience_requirement.work_experience_years.min', e.target.value)} placeholder="0" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">General Exp — Max (yrs)</label>
-            <input className="form-input" type="number" min={0} value={F('experience_requirement.work_experience_years.max')} onChange={e => set('experience_requirement.work_experience_years.max', e.target.value)} placeholder="10" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">GCC Exp — Min (yrs)</label>
-            <input className="form-input" type="number" min={0} value={F('experience_requirement.gcc_experience_years.min')} onChange={e => set('experience_requirement.gcc_experience_years.min', e.target.value)} placeholder="0" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">GCC Exp — Max (yrs)</label>
-            <input className="form-input" type="number" min={0} value={F('experience_requirement.gcc_experience_years.max')} onChange={e => set('experience_requirement.gcc_experience_years.max', e.target.value)} placeholder="5" />
+          <div className="hp-section-module">
+            <div className="hp-module-header">
+              <span className="hp-module-num">06 //</span>
+              <h2 className="hp-module-title">Experience Vector</h2>
+            </div>
+            <div className="hp-field-grid">
+              <div className="hp-form-group">
+                <label className="hp-label">Global Experience (Years)</label>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <input className="hp-input" type="number" min={0} value={F('experience_requirement.work_experience_years.min')} onChange={e => set('experience_requirement.work_experience_years.min', e.target.value)} placeholder="Min" />
+                  <input className="hp-input" type="number" min={0} value={F('experience_requirement.work_experience_years.max')} onChange={e => set('experience_requirement.work_experience_years.max', e.target.value)} placeholder="Max" />
+                </div>
+              </div>
+              <div className="hp-form-group">
+                <label className="hp-label">Regional (GCC) Experience (Years)</label>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <input className="hp-input" type="number" min={0} value={F('experience_requirement.gcc_experience_years.min')} onChange={e => set('experience_requirement.gcc_experience_years.min', e.target.value)} placeholder="Min" />
+                  <input className="hp-input" type="number" min={0} value={F('experience_requirement.gcc_experience_years.max')} onChange={e => set('experience_requirement.gcc_experience_years.max', e.target.value)} placeholder="Max" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  )
-
-  const Step4 = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="card">
-        <div className="section-hd"><h3>07</h3><h2>Application Settings</h2></div>
-        <div className="form-group mb-4">
-          <label className="form-label">Application Mode</label>
-          <select className="form-select" value={F('application_mode')} onChange={e => set('application_mode', e.target.value)}>
-            <option value="">Select</option>
-            {ref?.application_modes?.map(m => <option key={m}>{m}</option>)}
-          </select>
+      )
+      case 3: return (
+        <div className="hp-step-content">
+          <div className="hp-section-module">
+            <div className="hp-module-header">
+              <span className="hp-module-num">07 //</span>
+              <h2 className="hp-module-title">Application Control</h2>
+            </div>
+            <div className="hp-field-grid">
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Intake Mode</label>
+                <select className="hp-select" value={F('application_mode')} onChange={e => set('application_mode', e.target.value)}>
+                  <option value="">Select mode</option>
+                  {ref?.application_modes?.map(m => <option key={m}>{m}</option>)}
+                </select>
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Recruiter Operational Instructions</label>
+                <textarea className="hp-textarea" value={F('recruiter_instructions')} onChange={e => set('recruiter_instructions', e.target.value)} placeholder="Specify logic for the AI diagnostic engine..." />
+              </div>
+              <div className="hp-form-group hp-field-full">
+                <label className="hp-label">Custom Diagnostic Questions</label>
+                <HPTagInput value={form.custom_questions} onChange={v => set('custom_questions', v)} placeholder='Define screening queries...' />
+                <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 8, display: 'block' }}>Engine supports up to 6 custom diagnostic modules.</span>
+              </div>
+            </div>
+          </div>
+          {error && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#b91c1c', padding: 16, borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+              ERROR: {error}
+            </div>
+          )}
         </div>
-        <div className="form-group mb-4">
-          <label className="form-label">Recruiter Instructions</label>
-          <textarea className="form-textarea" rows={4} value={F('recruiter_instructions')} onChange={e => set('recruiter_instructions', e.target.value)} placeholder="Any special instructions for the AI assessment generator..." />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Custom Screening Questions</label>
-          <TagInput value={form.custom_questions} onChange={v => set('custom_questions', v)} placeholder='Type question, press Enter...' />
-          <span className="form-hint mt-1">Max 6 questions</span>
-        </div>
-      </div>
-
-      {error && <div className="alert alert-error">{error}</div>}
-    </div>
-  )
-
-  const stepComponents = [<Step1 />, <Step2 />, <Step3 />, <Step4 />]
+      )
+      default: return null
+    }
+  }
 
   return (
-    <Layout title="Post a Job" actions={
-      <button className="btn btn-ghost btn-sm" onClick={() => nav('/dashboard')}>← Back</button>
-    }>
-      <Steps current={step} steps={STEPS} />
-      {stepComponents[step]}
-      <div className="wizard-actions">
-        <button className="btn btn-ghost" onClick={() => step > 0 ? setStep(s => s - 1) : nav('/dashboard')} disabled={saving}>
-          {step === 0 ? 'Cancel' : '← Previous'}
-        </button>
-        {step < STEPS.length - 1
-          ? <button className="btn btn-primary" onClick={() => {
-              if (step === 0 && !form.job_details.job_title.trim()) { setError('Job title is required.'); return }
+    <Layout title="Post Strategic Position">
+      <div className="hp-form-container">
+        {/* Technical Stepper */}
+        <div className="hp-stepper-wrap">
+          {STEPS.map((s, i) => (
+            <div key={i} className={`hp-step-item ${i === step ? 'active' : i < step ? 'done' : ''}`} onClick={() => i < step && setStep(i)}>
+              <div className="hp-step-dot">{i + 1}</div>
+              <span className="hp-step-label">{s}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Step Content */}
+        <div className="hp-form-body">
+          {renderStep()}
+        </div>
+
+        {/* Navigation Actions */}
+        <div className="hp-wizard-actions">
+          <button className="hp-btn-prev" onClick={() => step > 0 ? setStep(s => s - 1) : nav('/dashboard')} disabled={saving}>
+            {step === 0 ? '← TERMINATE' : '← PREVIOUS MODULE'}
+          </button>
+          
+          {step < STEPS.length - 1 ? (
+            <button className="hp-btn-next" onClick={() => {
+              if (step === 0 && !form.job_details.job_title.trim()) { setError('CRITICAL: Position Title required.'); return }
               setError(''); setStep(s => s + 1)
-            }}>Next →</button>
-          : <button id="btn-submit-job" className={`btn btn-primary${saving ? ' btn-loading' : ''}`} onClick={submit} disabled={saving}>
-              {saving ? <><span className="spinner" /> Posting…</> : 'Post Job'}
+            }}>
+              NEXT PARAMETER →
             </button>
-        }
+          ) : (
+            <button className="hp-btn-next" style={{ background: '#0f172a' }} onClick={submit} disabled={saving}>
+              {saving ? 'INITIALIZING DEPLOYMENT...' : 'DEPLOY POSITION //'}
+            </button>
+          )}
+        </div>
       </div>
     </Layout>
   )
