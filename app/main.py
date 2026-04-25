@@ -13,6 +13,7 @@ from .database import init_db
 from .routers import api, auth
 
 
+import os
 from datasette.app import Datasette
 
 # Initialize Datasette for visual DB exploration
