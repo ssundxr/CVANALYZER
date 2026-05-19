@@ -161,7 +161,7 @@ export default function ProctoredAssessment() {
 
   const renderContent = () => {
     if (!data) return null
-    const { assessment } = data
+    const assessment = data.assessment || {}
     
     return (
       <div style={{ display: 'flex', minHeight: '100vh', width: '100vw', background: 'var(--bg)' }}>
@@ -185,7 +185,7 @@ export default function ProctoredAssessment() {
                 </span>
              </div>
              <div style={{ marginTop: '10px', fontSize: '13px' }}>
-                Total Questions: {assessment.total_questions}
+                Total Questions: {assessment?.total_questions || 0}
              </div>
           </div>
 
@@ -198,23 +198,31 @@ export default function ProctoredAssessment() {
         <div style={{ flex: 1, marginLeft: '280px', padding: '40px', overflowY: 'auto' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto' }}>
             
-            {assessment.sections?.map((sec, sIdx) => (
+            {(!assessment || !Array.isArray(assessment.sections) || assessment.sections.length === 0) && (
+              <div style={{ textAlign: 'center', padding: '50px', background: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '48px', marginBottom: '20px' }}>⚠️</div>
+                <h2 style={{ fontSize: '24px', color: 'var(--text)', marginBottom: '10px' }}>Assessment Not Ready</h2>
+                <p style={{ color: 'var(--text-muted)' }}>The assessment questions for this job have not been generated yet. Please contact the recruiter.</p>
+              </div>
+            )}
+            
+            {Array.isArray(assessment?.sections) && assessment.sections.map((sec, sIdx) => (
               <div key={sIdx} style={{ marginBottom: '40px' }}>
                 <h2 style={{ fontSize: 20, marginBottom: '20px', borderBottom: '2px solid var(--border)', paddingBottom: '10px' }}>
                   Section {sIdx+1}: {sec.label}
                 </h2>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {sec.questions?.map((q, qIdx) => (
+                  {Array.isArray(sec.questions) && sec.questions.map((q, qIdx) => (
                     <div key={q.id} style={{ padding: '24px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>Question {qIdx+1}</div>
                       <div style={{ fontSize: 16, marginBottom: 20, fontWeight: 500 }}>{q.question}</div>
                       
                       {['mcq', 'yes_no'].includes(sec.type) ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
-                          {q.options?.map(opt => (
-                            <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: `1px solid ${answers[q.id] === opt[0] ? 'var(--border-active)' : 'var(--border)'}`, borderRadius: 6, cursor: 'pointer', background: answers[q.id] === opt[0] ? 'var(--surface-hover)' : 'var(--surface)', transition: 'all var(--transition)' }}>
-                              <input type="radio" name={`q_${q.id}`} value={opt[0]} checked={answers[q.id] === opt[0]} onChange={() => setAnswers(prev => ({...prev, [q.id]: opt[0]}))}/>
+                          {Array.isArray(q.options) && q.options.map(opt => (
+                            <label key={opt || Math.random()} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: `1px solid ${answers[q.id] === (opt ? opt[0] : '') ? 'var(--border-active)' : 'var(--border)'}`, borderRadius: 6, cursor: 'pointer', background: answers[q.id] === (opt ? opt[0] : '') ? 'var(--surface-hover)' : 'var(--surface)', transition: 'all var(--transition)' }}>
+                              <input type="radio" name={`q_${q.id}`} value={opt ? opt[0] : ''} checked={answers[q.id] === (opt ? opt[0] : '')} onChange={() => setAnswers(prev => ({...prev, [q.id]: opt ? opt[0] : ''}))}/>
                               <span style={{ fontSize: 14 }}>{opt}</span>
                             </label>
                           ))}
