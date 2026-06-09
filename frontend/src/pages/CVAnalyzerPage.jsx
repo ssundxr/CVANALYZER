@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import TopNav from '../components/TopNav'
 
 export default function CVAnalyzerPage() {
@@ -8,21 +8,9 @@ export default function CVAnalyzerPage() {
   const [error, setError] = useState(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [completedFixes, setCompletedFixes] = useState([])
-  const [availableJobs, setAvailableJobs] = useState([])
-  const [applying, setApplying] = useState(false)
   const [file, setFile] = useState(null)
   const [targetCountries, setTargetCountries] = useState("")
   const [relocateAnywhere, setRelocateAnywhere] = useState(false)
-
-  useEffect(() => {
-    // Load jobs so they can apply after analysis
-    fetch('/api/candidate/jobs', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('candidate_token')}` }
-    })
-    .then(r => r.json())
-    .then(data => setAvailableJobs(data.items || []))
-    .catch(console.error)
-  }, [])
 
   const ANALYSIS_STEPS = [
     "Initializing Neural Engine...",
@@ -77,33 +65,6 @@ export default function CVAnalyzerPage() {
     setCompletedFixes(prev => 
       prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
     )
-  }
-
-  const handleApply = async () => {
-    // Find a matching job or just pick the first one for this demo
-    const job = availableJobs.find(j => j.job_details.job_title.toLowerCase().includes(jobTitle.toLowerCase())) || availableJobs[0]
-    if (!job) {
-      alert("No active jobs found matching this title.")
-      return
-    }
-
-    setApplying(true)
-    try {
-      const res = await fetch('/api/candidate/applications', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('candidate_token')}`
-        },
-        body: JSON.stringify({ job_post_id: job.id })
-      })
-      if (!res.ok) throw new Error(await res.text())
-      alert(`Successfully applied for ${job.job_details.job_title}!`)
-    } catch (e) {
-      alert(`Application failed: ${e.message}`)
-    } finally {
-      setApplying(false)
-    }
   }
 
   const exportPDF = () => {
@@ -245,16 +206,6 @@ export default function CVAnalyzerPage() {
                 <button onClick={exportPDF} className="btn btn-secondary">
                   <span>📥</span> Export Report (PDF)
                 </button>
-                {results.overall_ats_score >= 70 && (
-                  <button 
-                    onClick={handleApply} 
-                    className="btn btn-primary" 
-                    disabled={applying}
-                    style={{ background: 'var(--success)', borderColor: 'var(--success)' }}
-                  >
-                    {applying ? 'Applying...' : 'Apply for this Position'}
-                  </button>
-                )}
               </div>
             </div>
 

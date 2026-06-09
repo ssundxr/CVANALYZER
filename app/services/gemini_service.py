@@ -138,7 +138,7 @@ def build_prompt(job: JobPost, assessment_config: dict) -> str:
         for item in question_plan
     )
 
-    return f"""You are an expert HR Assessment Designer for SeekATS, a professional recruitment platform.
+    return f"""You are an expert HR Assessment Designer for SkillSync AI, a professional recruitment platform.
 Generate a comprehensive, role-specific candidate assessment.
 
 JOB TITLE: {details.get("job_title", "N/A")}
@@ -196,9 +196,11 @@ Generate EXACTLY the count from the blueprint. Questions must be role-specific."
 
 
 async def generate_assessment(job: JobPost, assessment_config: dict) -> dict:
-    api_key = os.getenv("GEMINI_API_KEY")
+    from app.config import settings
+    api_key = settings.gemini_api_key
+    
     if not api_key:
-        raise ValueError("GEMINI_API_KEY environment variable is not set.")
+        raise ValueError("GEMINI_API_KEY is not set.")
 
     genai.configure(api_key=api_key)
     model_name = resolve_gemini_model()

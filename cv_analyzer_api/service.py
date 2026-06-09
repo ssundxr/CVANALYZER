@@ -16,7 +16,9 @@ load_dotenv()
 class CVAnalysisService:
     @staticmethod
     async def analyze_resume_data(raw_text: str, job_title: str = "Senior Role") -> dict:
-        api_key = os.getenv("GEMINI_API_KEY")
+        # Make sure settings is imported if not already. Actually I'll do this better.
+        from app.config import settings
+        api_key = settings.gemini_api_key
         if not api_key:
             return {"candidate_name": "Error: Missing API Key", "score": 0, "red_flags": [], "improvements": []}
             
@@ -135,3 +137,24 @@ class CVAnalysisService:
             if "quota" in err_msg.lower() or "429" in err_msg:
                 return {"candidate_name": "Error: Quota Exceeded", "score": 0, "red_flags": [{"type": "System", "description": "Gemini API quota reached. Please try again in a minute."}], "improvements": []}
             return {"candidate_name": "Error analyzing resume", "score": 0, "red_flags": [], "improvements": []}
+
+    @staticmethod
+    def extract_text_from_file(file_content: bytes, filename: str) -> str:
+        import io
+        import pdfplumber
+        import docx
+        file_stream = io.BytesIO(file_content)
+        raw_text = ""
+        
+        if filename.endswith(".pdf"):
+            with pdfplumber.open(file_stream) as pdf:
+                for page in pdf.pages:
+                    text = page.extract_text()
+                    if text:
+                        raw_text += text + "\n"
+        elif filename.endswith(".docx"):
+            doc = docx.Document(file_stream)
+            raw_text = "\n".join([para.text for para in doc.paragraphs])
+            
+        return raw_text
+

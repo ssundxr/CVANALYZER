@@ -1,9 +1,5 @@
-import io
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException
 from .service import CVAnalysisService
-import pdfplumber
-import docx
-
 router = APIRouter(prefix="/api/cv", tags=["cv_analyzer"])
 
 @router.post("/analyze")
@@ -19,20 +15,8 @@ async def analyze_resume(
         
     try:
         content = await file.read()
-        file_stream = io.BytesIO(content)
+        raw_text = CVAnalysisService.extract_text_from_file(content, filename)
         
-        raw_text = ""
-        
-        if filename.endswith(".pdf"):
-            with pdfplumber.open(file_stream) as pdf:
-                for page in pdf.pages:
-                    text = page.extract_text()
-                    if text:
-                        raw_text += text + "\n"
-        elif filename.endswith(".docx"):
-            doc = docx.Document(file_stream)
-            raw_text = "\n".join([para.text for para in doc.paragraphs])
-            
         if not raw_text.strip():
             raise HTTPException(status_code=400, detail="Could not extract text from file.")
             

@@ -1,4 +1,4 @@
-# Assessment Recruiter
+# SkillSync AI
 
 FastAPI-based admin console for recruiter job posting and assessment generation prep.
 

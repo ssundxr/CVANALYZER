@@ -10,28 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .config import BASE_DIR, settings
 from .database import init_db
-from .routers import api, auth
-
-
 import os
-from datasette.app import Datasette
-
-# Initialize Datasette for visual DB exploration
-db_path = settings.database_url.replace("sqlite:///", "")
-if not db_path.startswith("/") and ":" not in db_path:
-    # Relative path, make it absolute relative to BASE_DIR
-    db_path_abs = str(BASE_DIR / db_path)
-else:
-    db_path_abs = db_path
-
-# Create the Datasette instance with the correct base path
-ds = Datasette(
-    [db_path_abs],
-    settings={
-        "base_url": "/db-explorer/",
-        "template_debug": True if not os.getenv("PROD") else False
-    }
-)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,8 +19,8 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(
-    title="SeekATS Assessment Recruiter API",
-    description="Recruiter portal for job posting and AI-powered assessment generation",
+    title="SkillSync AI API",
+    description="Standalone CV analyzer for resume extraction and Gemini-powered recommendations",
     version="0.2.0",
     lifespan=lifespan,
 )
@@ -50,10 +29,6 @@ app = FastAPI(
 @app.get("/healthz", include_in_schema=False)
 async def health_check():
     return {"status": "ok"}
-
-# ── Database Explorer (Native ASGI Mount) ───────────────────────────────
-# This is the most robust way to integrate Datasette: no proxy, no extra ports.
-app.mount("/db-explorer", ds.app())
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,13 +48,6 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
 app.mount("/media", StaticFiles(directory=str(settings.upload_dir)), name="media")
-
-app.include_router(auth.router)
-app.include_router(api.router)
-
-from .routers import candidate_auth, candidate_api
-app.include_router(candidate_auth.router)
-app.include_router(candidate_api.router)
 
 from cv_analyzer_api.router import router as cv_analyzer_router
 app.include_router(cv_analyzer_router)
@@ -103,7 +71,7 @@ else:
     @app.get("/", include_in_schema=False)
     async def root():
         return HTMLResponse(
-            "<h1 style='font-family:monospace'>SeekATS API running</h1>"
+            "<h1 style='font-family:monospace'>SkillSync AI API running</h1>"
             "<p>Build the frontend first:<br>"
             "<code>cd frontend && npm install && npm run build</code></p>"
             "<p><a href='/docs'>API Docs →</a></p>"
