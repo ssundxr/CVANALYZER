@@ -7,7 +7,6 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 TEST_UPLOADS = BASE_DIR / "test_uploads"
 
 os.environ["SECRET_KEY"] = "test-secret"
-os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 os.environ["UPLOAD_DIR"] = str(TEST_UPLOADS)
 os.environ["GEMINI_API_KEY"] = "test-key"
 

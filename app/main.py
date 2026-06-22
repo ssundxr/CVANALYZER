@@ -6,16 +6,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
 
 from .config import BASE_DIR, settings
-from .database import init_db
 import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB
-    init_db()
     yield
 
 app = FastAPI(
@@ -38,13 +34,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=settings.secret_key,
-    session_cookie=settings.session_cookie_name,
-    same_site="lax",
-    https_only=False,
-)
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
 app.mount("/media", StaticFiles(directory=str(settings.upload_dir)), name="media")
