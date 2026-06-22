@@ -78,7 +78,7 @@ export default function CVAnalyzerPage() {
 
       <div className="page-wrapper">
         <div className="flex justify-between items-center mb-6" style={{ color: 'white' }}>
-          <h1 style={{ color: 'white', fontSize: '28px' }}>CV Analyzer</h1>
+          <h1 style={{ color: 'white', fontSize: '28px' }}>SkillSync AI</h1>
         </div>
 
         <div className="card mb-6" style={{ background: 'var(--surface)', padding: '32px', textAlign: 'center' }}>
