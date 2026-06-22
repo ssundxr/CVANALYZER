@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: ap-southeast-2
   ECR_REPOSITORY: skillsync-repo
-  ECS_SERVICE: skillsync-service
+  ECS_SERVICE: skillsync-task-service-7i019ttd
   ECS_CLUSTER: skillsync-cluster
 
 jobs:
