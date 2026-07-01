@@ -1,8 +1,10 @@
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends
 from .service import CVAnalysisService
+from app.auth import verify_token
+
 router = APIRouter(prefix="/api/cv", tags=["cv_analyzer"])
 
-@router.post("/analyze")
+@router.post("/analyze", dependencies=[Depends(verify_token)])
 async def analyze_resume(
     file: UploadFile = File(...),
     job_title: str = Form("Senior Role"),

@@ -10,7 +10,8 @@ default_upload = data_mount / "uploads" if is_container else BASE_DIR / "uploads
 
 class Settings(BaseSettings):
     app_name: str = "SkillSync AI Assessment Recruiter"
-    secret_key: str
+    secret_key: str = "default_secret_key"
+    admin_password: str = "admin123"
     gemini_api_key: str
     upload_dir: Path = default_upload
 

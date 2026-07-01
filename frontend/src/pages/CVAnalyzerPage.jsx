@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import TopNav from '../components/TopNav'
 
 export default function CVAnalyzerPage() {
@@ -11,6 +12,7 @@ export default function CVAnalyzerPage() {
   const [file, setFile] = useState(null)
   const [targetCountries, setTargetCountries] = useState("")
   const [relocateAnywhere, setRelocateAnywhere] = useState(false)
+  const navigate = useNavigate()
 
   const ANALYSIS_STEPS = [
     "Initializing Neural Engine...",
@@ -24,6 +26,19 @@ export default function CVAnalyzerPage() {
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0]
     if (selectedFile) setFile(selectedFile)
+  }
+
+  const loadSampleCV = async (samplePath, defaultTitle) => {
+    try {
+      const response = await fetch(samplePath)
+      const blob = await response.blob()
+      const fileName = samplePath.split('/').pop()
+      const sampleFile = new File([blob], fileName, { type: 'application/pdf' })
+      setFile(sampleFile)
+      setJobTitle(defaultTitle)
+    } catch (err) {
+      setError("Failed to load sample CV.")
+    }
   }
 
   const handleFileUpload = async () => {
@@ -44,10 +59,19 @@ export default function CVAnalyzerPage() {
     formData.append('relocate_anywhere', relocateAnywhere)
 
     try {
+      const token = localStorage.getItem('auth_token')
       const response = await fetch('/api/cv/analyze', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       })
+      if (response.status === 401) {
+        localStorage.removeItem('auth_token')
+        navigate('/login')
+        return
+      }
       if (!response.ok) {
         throw new Error("Analysis failed. Make sure the backend is running.")
       }
@@ -162,6 +186,28 @@ export default function CVAnalyzerPage() {
                   </button>
                 </div>
               )}
+
+              {/* Sample CVs Section */}
+              <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                <h3 style={{ fontSize: '18px', color: 'var(--text)', marginBottom: '16px' }}>Don't have a resume handy? Try a sample:</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                  
+                  <div className="card" style={{ padding: '16px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease', border: '1px solid var(--border)' }} onClick={() => loadSampleCV('/samples/CV_SS.pdf', 'AI Engineer')}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>📄</div>
+                    <h4 style={{ fontSize: '16px', color: 'var(--text)', marginBottom: '4px' }}>AI Engineer</h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>CV_SS.pdf</p>
+                    <button className="btn btn-secondary" style={{ width: '100%', fontSize: '13px', padding: '8px' }}>Use this profile</button>
+                  </div>
+
+                  <div className="card" style={{ padding: '16px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease', border: '1px solid var(--border)' }} onClick={() => loadSampleCV('/samples/devops.pdf', 'DevOps Engineer')}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>📄</div>
+                    <h4 style={{ fontSize: '16px', color: 'var(--text)', marginBottom: '4px' }}>DevOps Engineer</h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>devops.pdf</p>
+                    <button className="btn btn-secondary" style={{ width: '100%', fontSize: '13px', padding: '8px' }}>Use this profile</button>
+                  </div>
+
+                </div>
+              </div>
             </div>
           )}
 

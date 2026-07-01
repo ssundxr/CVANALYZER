@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI, HTTPException, Depends
+from pydantic import BaseModel
+from app.auth import create_access_token
+from app.config import settings
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -25,6 +30,16 @@ app = FastAPI(
 @app.get("/healthz", include_in_schema=False)
 async def health_check():
     return {"status": "ok"}
+
+class LoginRequest(BaseModel):
+    password: str
+
+@app.post("/api/login")
+async def login(request: LoginRequest):
+    if request.password != settings.admin_password:
+        raise HTTPException(status_code=401, detail="Invalid password")
+    token = create_access_token({"sub": "admin"})
+    return {"access_token": token, "token_type": "bearer"}
 
 app.add_middleware(
     CORSMiddleware,
